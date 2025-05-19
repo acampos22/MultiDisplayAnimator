@@ -14,7 +14,7 @@ void *func(void *arg) {
 
         // Sección crítica
         printf(" Hilo %d ENTRA a sección crítica (iteración %d)\n", id, i);
-        for (volatile int j = 0; j < 100000000; j++);  // Delay artificial
+        for (volatile int j = 0; j < 100000000; j++);
         printf(" Hilo %d SALE de sección crítica (iteración %d)\n", id, i);
 
         my_mutex_unlock(&mutex);

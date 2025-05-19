@@ -9,6 +9,7 @@ my_thread_t *current_thread = NULL;
 
 void scheduler_init() {
     head = tail = current_thread = NULL;
+    srand(time(NULL));
 }
 
 void scheduler_add_thread(my_thread_t *thread) {
@@ -61,5 +62,46 @@ my_thread_t *scheduler_next_thread() {
     }
 
     return next;
+}
+my_thread_t *select_lottery() {
+    int total_tickets = 0;
+    my_thread_t *tmp = head;
+
+    do {
+        if (tmp->state == READY && tmp->sched_type == LOTTERY)
+            total_tickets += tmp->tickets;
+        tmp = tmp->next;
+    } while (tmp != head);
+
+    if (total_tickets == 0) return NULL;
+
+    int winner = rand() % total_tickets;
+    tmp = head;
+
+    do {
+        if (tmp->state == READY && tmp->sched_type == LOTTERY) {
+            if (winner < tmp->tickets)
+                return tmp;
+            winner -= tmp->tickets;
+        }
+        tmp = tmp->next;
+    } while (tmp != head);
+
+    return NULL;
+}
+my_thread_t *select_realtime() {
+    my_thread_t *selected = NULL;
+    my_thread_t *tmp = head;
+
+    do {
+        if (tmp->state == READY && tmp->sched_type == REALTIME) {
+            if (!selected || tmp->deadline < selected->deadline) {
+                selected = tmp;
+            }
+        }
+        tmp = tmp->next;
+    } while (tmp != head);
+
+    return selected;
 }
 
