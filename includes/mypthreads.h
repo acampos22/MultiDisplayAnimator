@@ -1,4 +1,7 @@
 // include/mypthreads.h
+#define _XOPEN_SOURCE 700
+#include <ucontext.h>
+
 #ifndef MYPTHREADS_H
 #define MYPTHREADS_H
 
@@ -6,7 +9,10 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <stdint.h>
+#include <sys/ucontext.h>
 
+// Tamaño del stack para cada hilo (32 KB)
+#define STACK_SIZE 32768
 typedef enum {
     READY,
     RUNNING,
@@ -23,18 +29,19 @@ typedef enum {
 #define STACK_SIZE 32768
 
 typedef struct my_thread {
-    int id;
-    jmp_buf context;
-    void *stack;
-    thread_state_t state;
-    void *retval;
-    int detached;
-    struct my_thread *next;
+    int id;                     // ID único del hilo
+    ucontext_t context;         // Contexto (PC, SP, etc.)
+    void *stack;                // Puntero al stack
+    thread_state_t state;       // Estado actual
+    void *retval;               // Valor de retorno
+    int detached;               // 1 si está detached, 0 si no
+    int joined;
+    struct my_thread *next;     // Enlace para cola circular
 
-    // Scheduling info
+    // Datos de planificación
     scheduler_type_t sched_type;
-    int tickets; // Para LOTTERY
-    int deadline; // Para REALTIME
+    int tickets;                // Sorteo
+    int deadline;               // Tiempo real
 } my_thread_t;
 
 int my_thread_create(my_thread_t **thread, scheduler_type_t sched, void *(*start_routine)(void *), void *arg);
