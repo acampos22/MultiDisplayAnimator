@@ -45,24 +45,32 @@ void scheduler_remove_thread(my_thread_t *thread) {
         cur = cur->next;
     } while (cur != head);
 }
-
 my_thread_t *scheduler_next_thread() {
+    my_thread_t *selected = NULL;
+
+    //Se intenta primero por lottery
+    selected = select_lottery();
+    if (selected) return selected;
+
+    //Intento REALTIME
+    selected = select_realtime();
+    if (selected) return selected;
+
+    //Round Robin tradicional
     if (!head) return NULL;
 
     my_thread_t *start = current_thread;
     my_thread_t *next = current_thread ? current_thread->next : head;
 
-    // Buscar un hilo que esté READY o RUNNING
-    while (next->state == TERMINATED) {
+    do {
+        if (next->state == READY && next->sched_type == RR)
+            return next;
         next = next->next;
-        if (next == start) {
-            // Dimos la vuelta completa y no hay hilos vivos
-            return NULL;
-        }
-    }
+    } while (next != start);
 
-    return next;
+    return NULL;
 }
+
 my_thread_t *select_lottery() {
     int total_tickets = 0;
     my_thread_t *tmp = head;
@@ -104,4 +112,5 @@ my_thread_t *select_realtime() {
 
     return selected;
 }
+
 
