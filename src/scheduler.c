@@ -2,6 +2,11 @@
 #include <ucontext.h>
 #include "../includes/scheduler.h"
 #include <stdlib.h>
+#include <time.h>
+
+// Declaración de funciones internas
+static my_thread_t *select_lottery();
+static my_thread_t *select_realtime();
 
 my_thread_t *head = NULL;
 my_thread_t *tail = NULL;
@@ -25,7 +30,7 @@ void scheduler_add_thread(my_thread_t *thread) {
 }
 
 void scheduler_remove_thread(my_thread_t *thread) {
-    if (!head) return;
+    if (!head || !thread) return;
 
     my_thread_t *prev = tail;
     my_thread_t *cur = head;
@@ -45,21 +50,22 @@ void scheduler_remove_thread(my_thread_t *thread) {
         cur = cur->next;
     } while (cur != head);
 }
+
 my_thread_t *scheduler_next_thread() {
     my_thread_t *selected = NULL;
 
-    //Se intenta primero por lottery
+    // LOTTERY
     selected = select_lottery();
     if (selected) return selected;
 
-    //Intento REALTIME
+    // REALTIME
     selected = select_realtime();
     if (selected) return selected;
 
-    //Round Robin tradicional
+    // ROUND ROBIN
     if (!head) return NULL;
 
-    my_thread_t *start = current_thread;
+    my_thread_t *start = current_thread ? current_thread : head;
     my_thread_t *next = current_thread ? current_thread->next : head;
 
     do {
@@ -71,9 +77,12 @@ my_thread_t *scheduler_next_thread() {
     return NULL;
 }
 
-my_thread_t *select_lottery() {
+// LOTTERY Scheduler
+static my_thread_t *select_lottery() {
     int total_tickets = 0;
     my_thread_t *tmp = head;
+
+    if (!tmp) return NULL;
 
     do {
         if (tmp->state == READY && tmp->sched_type == LOTTERY)
@@ -97,20 +106,21 @@ my_thread_t *select_lottery() {
 
     return NULL;
 }
-my_thread_t *select_realtime() {
+
+// REALTIME Scheduler
+static my_thread_t *select_realtime() {
     my_thread_t *selected = NULL;
     my_thread_t *tmp = head;
 
+    if (!tmp) return NULL;
+
     do {
         if (tmp->state == READY && tmp->sched_type == REALTIME) {
-            if (!selected || tmp->deadline < selected->deadline) {
+            if (!selected || tmp->deadline < selected->deadline)
                 selected = tmp;
-            }
         }
         tmp = tmp->next;
     } while (tmp != head);
 
     return selected;
 }
-
-

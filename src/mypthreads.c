@@ -55,15 +55,14 @@ void my_thread_end(void *retval) {
 
     my_thread_t *next = scheduler_next_thread();
 
-    if (next == NULL) {
-        // No quedan hilos vivos
+    if (!next) {
+        // No hay más hilos vivos
         exit(0);
     }
 
     current_thread = next;
     setcontext(&current_thread->context);
 }
-
 
 void my_thread_yield() {
     my_thread_t *prev = current_thread;
@@ -76,9 +75,7 @@ void my_thread_yield() {
 }
 
 int my_thread_join(my_thread_t *thread, void **retval) {
-    if (!thread || thread->detached) {
-        return -1;
-    }
+    if (!thread || thread->detached) return -1;
 
     thread->joined = 1;
 
@@ -96,9 +93,7 @@ int my_thread_join(my_thread_t *thread, void **retval) {
 }
 
 int my_thread_detach(my_thread_t *thread) {
-    if (!thread || thread->detached) {
-        return -1;
-    }
+    if (!thread || thread->detached) return -1;
 
     thread->detached = 1;
 
@@ -107,5 +102,11 @@ int my_thread_detach(my_thread_t *thread) {
         free(thread);
     }
 
+    return 0;
+}
+
+int my_thread_chsched(my_thread_t *thread, scheduler_type_t sched) {
+    if (!thread) return -1;
+    thread->sched_type = sched;
     return 0;
 }
