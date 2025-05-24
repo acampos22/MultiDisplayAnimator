@@ -3,52 +3,29 @@ CC = gcc
 CFLAGS = -Wall -g -D_XOPEN_SOURCE=700
 INCLUDES = -Iincludes
 
-# Archivos fuente comunes
-SRC = src/mypthreads.c src/scheduler.c src/mutex.c
+# Fuentes comunes
+UTILS_SRC = src/utils.c
+CANVAS_FILE_SRC = src/canvas_file.c
 
-# Canvas y monitor
-CANVAS_SRC = src/canvas.c
-MONITOR_SRC = src/monitor.c
+# Archivos principales
+MONITOR_PROCESS_SRC = monitor_process.c
+RENDER_LOOP_SRC = render_loop.c
 
-# Pruebas
-DEMO_TEST = test/demo.c
-DEMO_OUT = test/demo
+# Ejecutables
+MONITOR_PROCESS = monitor_process
+RENDER_LOOP = render_loop
 
-MUTEX_TEST = test/mutex_demo.c
-MUTEX_OUT = test/mutex_test
+# Regla por defecto
+all: $(MONITOR_PROCESS) $(RENDER_LOOP)
 
-SCHEDULER_TEST = test/test_schedulers.c
-SCHEDULER_OUT = test/test_schedulers
+# Compilar monitor_process
+$(MONITOR_PROCESS): $(MONITOR_PROCESS_SRC) $(CANVAS_FILE_SRC) $(UTILS_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
 
-CANVAS_TEST = test/test_canvas.c
-CANVAS_OUT = test/test_canvas
-
-MONITOR_TEST = test/test_monitor.c
-MONITOR_OUT = test/test_monitors
-
-# Regla por defecto: compila las pruebas principales
-all: $(DEMO_OUT) $(MUTEX_OUT) $(SCHEDULER_OUT)
-
-# Compilar demo
-$(DEMO_OUT): $(SRC) $(DEMO_TEST)
-	$(CC) $(CFLAGS) $(INCLUDES) $(SRC) $(DEMO_TEST) -o $(DEMO_OUT)
-
-# Compilar prueba de mutex
-$(MUTEX_OUT): $(SRC) $(MUTEX_TEST)
-	$(CC) $(CFLAGS) $(INCLUDES) $(SRC) $(MUTEX_TEST) -o $(MUTEX_OUT)
-
-# Compilar prueba de schedulers
-$(SCHEDULER_OUT): $(SRC) $(SCHEDULER_TEST)
-	$(CC) $(CFLAGS) $(INCLUDES) $(SRC) $(SCHEDULER_TEST) -o $(SCHEDULER_OUT)
-
-# Compilar prueba del canvas
-test_canvas: $(SRC) $(CANVAS_SRC) $(CANVAS_TEST)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $(CANVAS_OUT)
-
-# Compilar prueba de monitores
-test_monitors: $(SRC) $(CANVAS_SRC) $(MONITOR_SRC) $(MONITOR_TEST)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $(MONITOR_OUT)
+# Compilar render_loop
+$(RENDER_LOOP): $(RENDER_LOOP_SRC) $(CANVAS_FILE_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
 
 # Limpiar binarios
 clean:
-	rm -f $(DEMO_OUT) $(MUTEX_OUT) $(SCHEDULER_OUT) $(CANVAS_OUT) $(MONITOR_OUT)
+	rm -f $(MONITOR_PROCESS) $(RENDER_LOOP)

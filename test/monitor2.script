@@ -1,0 +1,5 @@
+draw x=2 y=1 char=B
+move x=2 y=1 dx=1 dy=0 steps=10 char=B
+
+
+
