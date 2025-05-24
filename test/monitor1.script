@@ -1,3 +1,3 @@
-draw x=2 y=1 char=A
-move x=2 y=1 dx=1 dy=0 steps=10 char=A
-
+draw x=20 y=0 char=X
+move x=20 y=0 dx=0 dy=1 steps=7 char=X
+handoff monitor2

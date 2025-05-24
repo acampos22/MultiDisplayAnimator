@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define HANDOFF_PREFIX "handoff_"
 
 typedef struct {
     int id;
@@ -14,16 +18,37 @@ typedef struct {
     int y_max;
 } region_t;
 
+void wait_for_handoff(const char *target_id) {
+    char filename[64];
+    snprintf(filename, sizeof(filename), "%s%s", HANDOFF_PREFIX, target_id);
+
+    while (access(filename, F_OK) != 0) {
+        usleep(100000); // espera 100ms
+    }
+    printf("[HANDOFF] Recibido control: %s\n", filename);
+}
+
+void signal_handoff(const char *target_id) {
+    char filename[64];
+    snprintf(filename, sizeof(filename), "%s%s", HANDOFF_PREFIX, target_id);
+
+    FILE *f = fopen(filename, "w");
+    if (f) {
+        fprintf(f, "start");
+        fclose(f);
+        printf("[HANDOFF] Pasado control a: %s\n", filename);
+    }
+}
+
 void run_script(char **script, int lines, char id, region_t region) {
     for (int i = 0; i < lines; i++) {
         char *line = script[i];
-        printf("[MONITOR %c] Ejecutando línea: %s\n", id, line);
+        printf("[MONITOR %c] Ejecutando: %s\n", id, line);
 
         if (strncmp(line, "draw", 4) == 0) {
             int x, y;
             sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
             if (y < region.y_min || y > region.y_max) continue;
-            printf("[MONITOR %c] Dibujando en %d,%d\n", id, x, y);
             canvas_file_draw(x, y, id);
         }
         else if (strncmp(line, "move", 4) == 0) {
@@ -33,29 +58,34 @@ void run_script(char **script, int lines, char id, region_t region) {
 
             for (int s = 0; s < steps; s++) {
                 if (y >= region.y_min && y <= region.y_max) {
-                    canvas_file_draw(x, y, ' ');  // solo borra si es su zona
+                    canvas_file_draw(x, y, ' ');
                 }
                 x += dx;
                 y += dy;
-
                 if (y >= region.y_min && y <= region.y_max) {
-                    printf("[MONITOR %c] Dibujando en %d,%d\n", id, x, y);
                     canvas_file_draw(x, y, id);
-                }
-                else {
-                    printf("[MONITOR %c] Fuera de zona en %d,%d, pausa\n", id, x, y);
                 }
                 usleep(300000);
             }
+        }
+        else if (strncmp(line, "handoff", 7) == 0) {
+            char target[32];
+            sscanf(line, "handoff %s", target);
+            signal_handoff(target);
+        }
+        else if (strncmp(line, "wait", 4) == 0) {
+            char source[32];
+            sscanf(line, "wait %s", source);
+            wait_for_handoff(source);
         }
     }
 }
 
 int main(int argc, char *argv[]) {
-    canvas_file_init();  // asegura que el canvas exista
+    canvas_file_init();
 
-    if (argc != 6) {
-        printf("Uso: %s <archivo.script> <letra> <y_min> <y_max> <monitor_id>\n", argv[0]);
+    if (argc != 6 && argc != 7) {
+        printf("Uso: %s <archivo.script> <letra> <y_min> <y_max> <monitor_id> [--clean]\n", argv[0]);
         return 1;
     }
 
@@ -64,6 +94,14 @@ int main(int argc, char *argv[]) {
     int y_min = atoi(argv[3]);
     int y_max = atoi(argv[4]);
     int id = atoi(argv[5]);
+
+    // Limpiar handoff si se pidió
+    if (argc == 7 && strcmp(argv[6], "--clean") == 0) {
+        char cleanup_file[64];
+        snprintf(cleanup_file, sizeof(cleanup_file), "handoff_monitor%d", id);
+        remove(cleanup_file);
+        printf("[CLEANUP] Eliminado: %s\n", cleanup_file);
+    }
 
     region_t region = { .id = id, .y_min = y_min, .y_max = y_max };
 
