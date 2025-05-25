@@ -1,3 +1,12 @@
-draw x=20 y=0 char=X
-move x=20 y=0 dx=0 dy=1 steps=7 char=X
-handoff monitor2
+draw_shape x=24 y=3 file=test/formas/flecha.txt angle=0
+move x=10 y=3 dx=0 dy=0 steps=1 char= 
+
+draw_shape x=24 y=3 file=test/formas/flecha.txt angle=90
+move x=10 y=3 dx=0 dy=0 steps=1 char=  
+
+draw_shape x=24 y=3 file=test/formas/flecha.txt angle=180
+move x=10 y=3 dx=0 dy=0 steps=1 char=  
+
+draw_shape x=24 y=3 file=test/formas/flecha.txt angle=270
+
+
