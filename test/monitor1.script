@@ -1,12 +1,7 @@
-draw_shape x=24 y=3 file=test/formas/flecha.txt angle=0
-move x=10 y=3 dx=0 dy=0 steps=1 char= 
+lifetime start=1000 end=1600
 
-draw_shape x=24 y=3 file=test/formas/flecha.txt angle=90
-move x=10 y=3 dx=0 dy=0 steps=1 char=  
-
-draw_shape x=24 y=3 file=test/formas/flecha.txt angle=180
-move x=10 y=3 dx=0 dy=0 steps=1 char=  
-
-draw_shape x=24 y=3 file=test/formas/flecha.txt angle=270
-
-
+draw_shape x=10 y=3 file=test/formas/flecha.txt angle=0
+draw_shape x=10 y=3 file=test/formas/flecha.txt angle=90
+draw_shape x=10 y=3 file=test/formas/flecha.txt angle=180
+draw_shape x=10 y=3 file=test/formas/flecha.txt angle=270
+draw_shape x=10 y=3 file=test/formas/flecha.txt angle=180
