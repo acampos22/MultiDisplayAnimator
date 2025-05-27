@@ -1,3 +1,6 @@
+#define _DEFAULT_SOURCE
+#define _XOPEN_SOURCE 700
+#include <unistd.h>
 #include "../includes/shape.h"
 #include "../includes/canvas_file.h"
 #include <stdio.h>
@@ -99,6 +102,9 @@ void draw_shape_on_canvas(int x, int y, const Shape *shape) {
         for (int j = 0; j < shape->width; j++) {
             char c = shape->pixels[i][j];
             if (c != ' ' && c != '\0') {
+                while (!canvas_file_is_free(x + j, y + i)) {
+                    usleep(100000); 
+                }
                 canvas_file_draw(x + j, y + i, c);
             }
         }

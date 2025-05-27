@@ -9,5 +9,6 @@ void canvas_file_init();
 void canvas_file_draw(int x, int y, char c);
 void canvas_file_clear();
 void canvas_file_render();
+int canvas_file_is_free(int x, int y); 
 
 #endif

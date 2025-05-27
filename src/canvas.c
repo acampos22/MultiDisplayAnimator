@@ -1,5 +1,6 @@
 #include "../includes/canvas.h"
 #include <stdio.h>
+#include <canvas_file.h>
 
 void canvas_init(canvas_t *canvas) {
     my_mutex_init(&canvas->lock);
@@ -19,6 +20,8 @@ void canvas_draw(canvas_t *canvas, int x, int y, char c) {
     canvas->grid[y][x] = c;
     my_mutex_unlock(&canvas->lock);
 }
+
+
 
 void canvas_render(canvas_t *canvas) {
     my_mutex_lock(&canvas->lock);

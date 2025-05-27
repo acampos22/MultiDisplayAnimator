@@ -14,9 +14,10 @@ typedef struct {
 
 void canvas_init(canvas_t *canvas);
 void canvas_draw(canvas_t *canvas, int x, int y, char c);
-void canvas_render(canvas_t *canvas);  // imprime en consola
+void canvas_render(canvas_t *canvas);  
 void canvas_clear(canvas_t *canvas);
 void canvas_draw_and_render(canvas_t *canvas, int x, int y, char c);
+
 
 
 #endif

@@ -42,3 +42,18 @@ void canvas_file_render() {
     }
     fclose(f);
 }
+
+int canvas_file_is_free(int x, int y) {
+    if (x < 0 || x >= CANVAS_WIDTH || y < 0 || y >= CANVAS_HEIGHT)
+        return 0;
+
+    FILE *f = fopen(CANVAS_FILENAME, "r");
+    if (!f) return 0;
+
+    int pos = y * (CANVAS_WIDTH + 1) + x;
+    fseek(f, pos, SEEK_SET);
+    char c = fgetc(f);
+    fclose(f);
+
+    return (c == ' ' || c == '\n');  
+}

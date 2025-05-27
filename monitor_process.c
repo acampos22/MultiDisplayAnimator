@@ -62,103 +62,117 @@ void signal_handoff(const char *target_id) {
 }
 
 void run_script(char **script, int lines, char id, region_t region, struct timeval start_time) {
-    int lifetime_start = 0;
-    int lifetime_end = 9999999;
-    Shape *prev_shape = NULL;
-    int prev_x = -1, prev_y = -1;
-
-    for (int i = 0; i < lines; i++) {
+    int i = 0;
+    while (i < lines) {
+        // Buscar el próximo bloque lifetime
         if (strncmp(script[i], "lifetime", 8) == 0) {
+            int lifetime_start = 0, lifetime_end = 9999999;
             sscanf(script[i], "lifetime start=%d end=%d", &lifetime_start, &lifetime_end);
-            break;
-        }
-    }
+            i++;
 
-    while (get_elapsed_time_ms(start_time) < lifetime_start) {
-        usleep(100000);
-    }
+            Shape *prev_shape = NULL;
+            int prev_x = -1, prev_y = -1;
 
-    for (int i = 0; i < lines; i++) {
-        char *line = script[i];
-        if (strncmp(line, "lifetime", 8) == 0) continue;
-
-        if (get_elapsed_time_ms(start_time) > lifetime_end) {
-            show_boom(prev_x, prev_y, prev_shape);
-            if (prev_shape) {
-                free(prev_shape);
-                prev_shape = NULL;
-            }
-            break;
-        }
-
-        if (strncmp(line, "draw_shape", 10) == 0) {
-            int x, y, angle;
-            char file[64];
-            if (sscanf(line, "draw_shape x=%d y=%d file=%s angle=%d", &x, &y, file, &angle) != 4) continue;
-
-            Shape *s = load_shape(file);
-            if (!s) continue;
-
-            Shape *rotada = rotate_shape(s, angle);
-            if (!rotada) {
-                free(s);
-                continue;
+            // Esperar a que empiece el bloque
+            while (get_elapsed_time_ms(start_time) < lifetime_start) {
+                usleep(100000);
             }
 
-            if (prev_shape) {
-                clear_shape_from_canvas(prev_x, prev_y, prev_shape);
-                free(prev_shape);
-            }
+            // Ejecutar comandos del bloque hasta que termine o llegue otro lifetime
+            while (i < lines && strncmp(script[i], "lifetime", 8) != 0) {
+                char *line = script[i];
 
-            draw_shape_on_canvas(x, y, rotada);
-            prev_shape = rotada;
-            prev_x = x;
-            prev_y = y;
-
-            free(s);
-            usleep(400000);
-        }
-
-        else if (strncmp(line, "draw", 4) == 0) {
-            int x, y;
-            sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
-            if (y >= region.y_min && y <= region.y_max)
-                canvas_file_draw(x, y, id);
-        }
-
-        else if (strncmp(line, "move", 4) == 0) {
-            int x, y, dx, dy, steps;
-            sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps);
-            for (int s = 0; s < steps; s++) {
+                // Verificar si se pasó del tiempo permitido
                 if (get_elapsed_time_ms(start_time) > lifetime_end) {
                     show_boom(prev_x, prev_y, prev_shape);
                     if (prev_shape) {
                         free(prev_shape);
                         prev_shape = NULL;
                     }
-                    return;
+                    break;
                 }
 
-                if (y >= region.y_min && y <= region.y_max)
-                    canvas_file_draw(x, y, ' ');
-                x += dx;
-                y += dy;
-                if (y >= region.y_min && y <= region.y_max)
-                    canvas_file_draw(x, y, id);
-                usleep(300000);
+                if (strncmp(line, "draw_shape", 10) == 0) {
+                    int x, y, angle;
+                    char file[64];
+                    if (sscanf(line, "draw_shape x=%d y=%d file=%s angle=%d", &x, &y, file, &angle) != 4) {
+                        i++;
+                        continue;
+                    }
+
+                    Shape *s = load_shape(file);
+                    if (!s) {
+                        i++;
+                        continue;
+                    }
+
+                    Shape *rotada = rotate_shape(s, angle);
+                    if (!rotada) {
+                        free(s);
+                        i++;
+                        continue;
+                    }
+
+                    if (prev_shape) {
+                        clear_shape_from_canvas(prev_x, prev_y, prev_shape);
+                        free(prev_shape);
+                    }
+
+                    draw_shape_on_canvas(x, y, rotada);
+                    prev_shape = rotada;
+                    prev_x = x;
+                    prev_y = y;
+
+                    free(s);
+                    usleep(400000);
+                }
+
+                else if (strncmp(line, "draw", 4) == 0) {
+                    int x, y;
+                    sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
+                    if (y >= region.y_min && y <= region.y_max)
+                        canvas_file_draw(x, y, id);
+                }
+
+                else if (strncmp(line, "move", 4) == 0) {
+                    int x, y, dx, dy, steps;
+                    sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps);
+                    for (int s = 0; s < steps; s++) {
+                        if (get_elapsed_time_ms(start_time) > lifetime_end) {
+                            show_boom(prev_x, prev_y, prev_shape);
+                            if (prev_shape) {
+                                free(prev_shape);
+                                prev_shape = NULL;
+                            }
+                            return;
+                        }
+
+                        if (y >= region.y_min && y <= region.y_max)
+                            canvas_file_draw(x, y, ' ');
+                        x += dx;
+                        y += dy;
+                        if (y >= region.y_min && y <= region.y_max)
+                            canvas_file_draw(x, y, id);
+                        usleep(300000);
+                    }
+                }
+
+                else if (strncmp(line, "handoff", 7) == 0) {
+                    char target[32];
+                    sscanf(line, "handoff %s", target);
+                    signal_handoff(target);
+                }
+
+                else if (strncmp(line, "wait", 4) == 0) {
+                    char source[32];
+                    sscanf(line, "wait %s", source);
+                    wait_for_handoff(source);
+                }
+
+                i++;
             }
-        }
-
-        else if (strncmp(line, "handoff", 7) == 0) {
-            char target[32];
-            sscanf(line, "handoff %s", target);
-            signal_handoff(target);
-        }
-
-        else if (strncmp(line, "wait", 4) == 0) {
-            char source[32];
-            sscanf(line, "wait %s", source);
-            wait_for_handoff(source);
+        } else {
+            i++; 
         }
     }
 }
