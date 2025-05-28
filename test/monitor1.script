@@ -1,11 +1,9 @@
-ifetime start=1000 end=4000
+
+lifetime start=1000 end=5000
 draw_shape x=10 y=5 file=test/formas/flecha.txt angle=0
-draw_shape x=10 y=5 file=test/formas/flecha.txt angle=90
-draw_shape x=10 y=5 file=test/formas/flecha.txt angle=180
-draw_shape x=10 y=5 file=test/formas/flecha.txt angle=270
+
+lifetime start=1000 end=5000
+draw_shape x=11 y=6 file=test/formas/flecho.txt angle=0
 
 lifetime start=2000 end=6000
 draw_shape x=10 y=5 file=test/formas/flecho.txt angle=0
-draw_shape x=10 y=5 file=test/formas/flecho.txt angle=90
-draw_shape x=10 y=5 file=test/formas/flecho.txt angle=180
-draw_shape x=10 y=5 file=test/formas/flecho.txt angle=270
