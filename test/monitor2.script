@@ -1,2 +1,2 @@
-wait monitor2
-move x=20 y=7 dx=0 dy=1 steps=7 char=X
+draw_shape x=10 y=5 file=test/formas/flecho.txt angle=0
+

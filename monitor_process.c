@@ -168,6 +168,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
 }
 int main(int argc, char *argv[]) {
     canvas_file_init();
+    canvas_file_clear();
 
     if (argc != 6 && argc != 7) {
         printf("Uso: %s <archivo.script> <letra> <y_min> <y_max> <monitor_id> [--clean]\n", argv[0]);

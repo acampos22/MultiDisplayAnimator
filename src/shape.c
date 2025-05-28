@@ -96,25 +96,37 @@ Shape *rotate_shape(const Shape *orig, int angle) {
     return rot;
 }
 
-
 void draw_shape_on_canvas(int x, int y, const Shape *shape) {
     for (int i = 0; i < shape->height; i++) {
         for (int j = 0; j < shape->width; j++) {
             char c = shape->pixels[i][j];
             if (c != ' ' && c != '\0') {
-                while (!canvas_file_is_free(x + j, y + i)) {
-                    usleep(100000); 
+                int abs_x = x + j;
+                int abs_y = y + i;
+
+                if (abs_x >= 0 && abs_x < CANVAS_WIDTH && abs_y >= 0 && abs_y < CANVAS_HEIGHT) {
+                    // Esperar hasta poder bloquear el mutex de esa celda
+                    pthread_mutex_lock(&canvas_mutex[abs_y][abs_x]);
+                    canvas_file_draw(abs_x, abs_y, c);
                 }
-                canvas_file_draw(x + j, y + i, c);
             }
         }
     }
 }
+
+
 void clear_shape_from_canvas(int x, int y, const Shape *shape) {
     for (int i = 0; i < shape->height; i++) {
         for (int j = 0; j < shape->width; j++) {
-            if (shape->pixels[i][j] != ' ' && shape->pixels[i][j] != '\0') {
-                canvas_file_draw(x + j, y + i, ' ');
+            char c = shape->pixels[i][j];
+            if (c != ' ' && c != '\0') {
+                int abs_x = x + j;
+                int abs_y = y + i;
+
+                if (abs_x >= 0 && abs_x < CANVAS_WIDTH && abs_y >= 0 && abs_y < CANVAS_HEIGHT) {
+                    canvas_file_draw(abs_x, abs_y, ' ');
+                    pthread_mutex_unlock(&canvas_mutex[abs_y][abs_x]); // Liberar espacio
+                }
             }
         }
     }
