@@ -1,0 +1,2 @@
+lifetime start=1100 end=200000
+draw_shape x=22 y=2 file=test/formas/flechu.txt angle=0

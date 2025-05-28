@@ -1,2 +1,15 @@
-draw_shape x=10 y=5 file=test/formas/flecho.txt angle=0
-
+lifetime start=1000 end=12000
+draw_shape x=5 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=6 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=7 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=8 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=9 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=10 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=11 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=12 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=13 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=14 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=15 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=16 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=17 y=5 file=test/formas/flecha.txt angle=0
+draw_shape x=18 y=5 file=test/formas/flecha.txt angle=0

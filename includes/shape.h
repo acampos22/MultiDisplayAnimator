@@ -15,5 +15,4 @@ Shape *rotate_shape(const Shape *orig, int angle);
 void draw_shape_on_canvas(int x, int y, const Shape *shape);  
 void clear_shape_from_canvas(int x, int y, const Shape *shape);
 
-
 #endif

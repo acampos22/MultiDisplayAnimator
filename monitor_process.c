@@ -27,28 +27,20 @@ long get_elapsed_time_ms(struct timeval start_time) {
 }
 
 void show_boom(int x, int y, const Shape *shape) {
-    if (shape) {
-        clear_shape_from_canvas(x, y, shape);
-    }
-
+    if (shape) clear_shape_from_canvas(x, y, shape);
     canvas_file_draw(x, y, '*');
     canvas_file_draw(x + 1, y, 'B');
     canvas_file_draw(x + 2, y, 'O');
     canvas_file_draw(x + 3, y, 'O');
     canvas_file_draw(x + 4, y, 'M');
-
-    usleep(600000); 
-    for (int i = 0; i < 5; i++) {
-        canvas_file_draw(x + i, y, ' ');
-    }
+    usleep(600000);
+    for (int i = 0; i < 5; i++) canvas_file_draw(x + i, y, ' ');
 }
 
 void wait_for_handoff(const char *target_id) {
     char filename[64];
     snprintf(filename, sizeof(filename), "%s%s", HANDOFF_PREFIX, target_id);
-    while (access(filename, F_OK) != 0) {
-        usleep(100000);
-    }
+    while (access(filename, F_OK) != 0) usleep(100000);
 }
 
 void signal_handoff(const char *target_id) {
@@ -63,37 +55,31 @@ void signal_handoff(const char *target_id) {
 
 void run_script(char **script, int lines, char id, region_t region, struct timeval start_time) {
     int i = 0;
+    Shape *prev_shape = NULL;
+    int prev_x = -1, prev_y = -1;
 
     while (i < lines) {
-        // Buscar el bloque lifetime
         int lifetime_start = 0, lifetime_end = 9999999;
-        while (i < lines && strncmp(script[i], "lifetime", 8) != 0) i++;  // buscar "lifetime"
+        while (i < lines && strncmp(script[i], "lifetime", 8) != 0) i++;
         if (i >= lines) break;
 
         sscanf(script[i], "lifetime start=%d end=%d", &lifetime_start, &lifetime_end);
         i++;
 
-        // Acumular instrucciones de este bloque
         int block_start = i;
         while (i < lines && strncmp(script[i], "lifetime", 8) != 0) i++;
         int block_end = i;
 
-        // Esperar al tiempo de inicio
         while (get_elapsed_time_ms(start_time) < lifetime_start) {
-            usleep(100000);
+            usleep(10000);
         }
 
-        static Shape *prev_shape = NULL;
-        static int prev_x = -1, prev_y = -1;
-
-        // Ejecutar instrucciones del bloque
         for (int j = block_start; j < block_end; j++) {
             char *line = script[j];
 
-            // Verificar si se pasÃ³ del tiempo
             if (get_elapsed_time_ms(start_time) > lifetime_end) {
-                show_boom(prev_x, prev_y, prev_shape);
                 if (prev_shape) {
+                    show_boom(prev_x, prev_y, prev_shape);
                     free(prev_shape);
                     prev_shape = NULL;
                 }
@@ -117,14 +103,48 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 if (prev_shape) {
                     clear_shape_from_canvas(prev_x, prev_y, prev_shape);
                     free(prev_shape);
+                    prev_shape = NULL;
                 }
 
                 draw_shape_on_canvas(x, y, rotada);
                 prev_shape = rotada;
                 prev_x = x;
                 prev_y = y;
-                free(s);
-                usleep(400000);
+                free(s); // solo rotada se mantiene para siguiente paso
+                usleep(300000);
+            }
+
+            else if (strncmp(line, "move", 4) == 0 && prev_shape != NULL) {
+                int x, y, dx, dy, steps;
+                sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps);
+
+                for (int s = 0; s < steps; s++) {
+                    if (get_elapsed_time_ms(start_time) > lifetime_end) {
+                        show_boom(x, y, prev_shape);
+                        free(prev_shape);
+                        prev_shape = NULL;
+                        return;
+                    }
+
+                    // Esperar a que la nueva posición esté libre
+                    int next_x = x + dx;
+                    int next_y = y + dy;
+                    while (!canvas_file_is_free(next_x, next_y)) {
+                        usleep(100000);
+                    }
+
+                    // Borrar forma actual
+                    clear_shape_from_canvas(x, y, prev_shape);
+
+                    // Dibujar en nueva posición
+                    draw_shape_on_canvas(next_x, next_y, prev_shape);
+                    x = next_x;
+                    y = next_y;
+                    prev_x = x;
+                    prev_y = y;
+
+                    usleep(300000);
+                }
             }
 
             else if (strncmp(line, "draw", 4) == 0) {
@@ -132,24 +152,6 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
                 if (y >= region.y_min && y <= region.y_max)
                     canvas_file_draw(x, y, id);
-            }
-
-            else if (strncmp(line, "move", 4) == 0) {
-                int x, y, dx, dy, steps;
-                sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps);
-                for (int s = 0; s < steps; s++) {
-                    if (get_elapsed_time_ms(start_time) > lifetime_end) {
-                        show_boom(x, y, prev_shape);
-                        return;
-                    }
-                    if (y >= region.y_min && y <= region.y_max)
-                        canvas_file_draw(x, y, ' ');
-                    x += dx;
-                    y += dy;
-                    if (y >= region.y_min && y <= region.y_max)
-                        canvas_file_draw(x, y, id);
-                    usleep(300000);
-                }
             }
 
             else if (strncmp(line, "handoff", 7) == 0) {
@@ -166,9 +168,9 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
         }
     }
 }
+
 int main(int argc, char *argv[]) {
     canvas_file_init();
-    canvas_file_clear();
 
     if (argc != 6 && argc != 7) {
         printf("Uso: %s <archivo.script> <letra> <y_min> <y_max> <monitor_id> [--clean]\n", argv[0]);

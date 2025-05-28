@@ -1,2 +1,2 @@
-draw x=2 y=2 char=Z
-
+lifetime start=1000 end=10000
+draw_shape x=15 y=5 file=test/formas/flecha.txt angle=0

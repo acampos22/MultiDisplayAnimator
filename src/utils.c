@@ -17,7 +17,7 @@ char **read_script(const char *filename, int *line_count) {
     int count = 0;
 
     while (fgets(buffer, sizeof(buffer), file) && count < MAX_LINES) {
-        buffer[strcspn(buffer, "\n")] = '\0';  // quitar newline
+        buffer[strcspn(buffer, "\n")] = '\0';
         lines[count] = strdup(buffer);
         count++;
     }

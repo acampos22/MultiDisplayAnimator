@@ -1,7 +1,7 @@
 #ifndef CANVAS_FILE_H
 #define CANVAS_FILE_H
 
-#include <pthread.h>  // <== ESTA ES LA CLAVE
+#include <pthread.h>
 
 #define CANVAS_WIDTH 40
 #define CANVAS_HEIGHT 15

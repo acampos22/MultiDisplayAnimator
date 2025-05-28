@@ -1,3 +1,6 @@
-flecho
-oo
-oo
+Flecha
+  #
+ ###
+#####
+ ###
+  #

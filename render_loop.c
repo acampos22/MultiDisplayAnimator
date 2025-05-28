@@ -3,11 +3,12 @@
 #include "../includes/canvas_file.h"
 #include <unistd.h>
 
+
 int main() {
     canvas_file_init();
     while (1) {
         canvas_file_render();
-        usleep(100000); // refresco cada 100ms
+        usleep(100000);
     }
     return 0;
 }
