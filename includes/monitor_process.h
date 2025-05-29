@@ -1,9 +1,11 @@
 #ifndef MONITOR_PROCESS_H
 #define MONITOR_PROCESS_H
 
+#include <limits.h> // Para PATH_MAX
+
 // Argumentos que recibe cada monitor
 typedef struct {
-    const char *script_file;
+    char script_file[PATH_MAX];
     int monitor_id;
     int y_min;
     int y_max;
@@ -11,5 +13,8 @@ typedef struct {
 
 // Función que ejecuta un monitor en un hilo
 void *monitor_run_script(void *arg);
+
+// Depuración segura de errores
+void debug_log(const char *msg);
 
 #endif // MONITOR_PROCESS_H

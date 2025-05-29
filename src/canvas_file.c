@@ -61,14 +61,15 @@ int canvas_file_is_free(int x, int y) {
         pthread_mutex_unlock(&canvas_mutex[y][x]);
         return 0;
     }
-
     int pos = y * (CANVAS_WIDTH + 1) + x;
     fseek(f, pos, SEEK_SET);
     char c = fgetc(f);
     fclose(f);
-
     pthread_mutex_unlock(&canvas_mutex[y][x]);
-    return (c == ' ' || c == '\n');
+    if (c != ' ') {
+        printf("🟥 Celda ocupada (%d,%d) contiene: '%c'\n", x, y, c);
+    }    
+    return (c == ' ' || c == '\n');    
 }
 void canvas_file_render() {
     FILE *f = fopen(CANVAS_FILENAME, "r");

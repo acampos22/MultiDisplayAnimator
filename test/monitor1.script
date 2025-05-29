@@ -1,2 +1,3 @@
-lifetime start=1000 end=10000
-draw_shape x=15 y=5 file=test/formas/flecha.txt angle=0
+lifetime start=0 end=5000
+draw_shape x=10 y=5 file=test/formas/flecha.txt angle=0
+move x=10 y=5 dx=1 dy=0 steps=10 char=#

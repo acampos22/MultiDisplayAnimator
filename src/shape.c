@@ -117,8 +117,8 @@ void clear_shape_from_canvas(int x, int y, const Shape *shape) {
                 int abs_x = x + j;
                 int abs_y = y + i;
                 canvas_file_draw(abs_x, abs_y, ' ');
-                pthread_mutex_unlock(&canvas_mutex[abs_y][abs_x]);
             }
         }
     }
 }
+

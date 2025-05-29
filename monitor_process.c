@@ -1,9 +1,11 @@
+// monitor_process.c
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 700
 
 #include "shape.h"
 #include "../includes/utils.h"
 #include "../includes/canvas_file.h"
+#include "../includes/monitor_process.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,12 +22,9 @@ typedef struct {
     int y_max;
 } region_t;
 
-typedef struct {
-    const char *script_file;
-    int monitor_id;
-    int y_min;
-    int y_max;
-} monitor_args_t;
+void debug_log(const char *msg) {
+    fprintf(stderr, "[DEBUG] %s\n", msg);
+}
 
 long get_elapsed_time_ms(struct timeval start_time) {
     struct timeval now;
@@ -99,10 +98,14 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 if (sscanf(line, "draw_shape x=%d y=%d file=%s angle=%d", &x, &y, file, &angle) != 4) continue;
 
                 Shape *s = load_shape(file);
-                if (!s) continue;
+                if (!s) {
+                    fprintf(stderr, "[ERROR] No se pudo cargar la forma desde: %s\n", file);
+                    continue;
+                }
 
                 Shape *rotada = rotate_shape(s, angle);
                 if (!rotada) {
+                    fprintf(stderr, "[ERROR] Rotación fallida para: %s\n", file);
                     free(s);
                     continue;
                 }
@@ -121,10 +124,20 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 usleep(300000);
             }
 
-            else if (strncmp(line, "move", 4) == 0 && prev_shape != NULL) {
+            else if (strncmp(line, "move", 4) == 0) {
+                if (prev_shape == NULL) {
+                    printf("⚠️  No hay forma previa cargada para mover\n");
+                    continue;
+                }
+            
+                printf("➡️  Ejecutando movimiento\n");
+            
                 int x, y, dx, dy, steps;
-                sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps);
-
+                if (sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps) != 5) {
+                    fprintf(stderr, "[ERROR] Línea move malformada: %s\n", line);
+                    continue;
+                }
+            
                 for (int s = 0; s < steps; s++) {
                     if (get_elapsed_time_ms(start_time) > lifetime_end) {
                         show_boom(x, y, prev_shape);
@@ -132,23 +145,30 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                         prev_shape = NULL;
                         return;
                     }
-
+            
                     int next_x = x + dx;
                     int next_y = y + dy;
+            
+                    if (next_x < 0 || next_x >= CANVAS_WIDTH || next_y < 0 || next_y >= CANVAS_HEIGHT) {
+                        fprintf(stderr, "[WARN] Movimiento fuera del canvas: (%d, %d)\n", next_x, next_y);
+                        continue;
+                    }
+            
                     while (!canvas_file_is_free(next_x, next_y)) {
+                        printf("⏳ Esperando que (%d, %d) esté libre...\n", next_x, next_y);
                         usleep(100000);
                     }
-
+            
                     clear_shape_from_canvas(x, y, prev_shape);
                     draw_shape_on_canvas(next_x, next_y, prev_shape);
                     x = next_x;
                     y = next_y;
                     prev_x = x;
                     prev_y = y;
-
+            
                     usleep(300000);
                 }
-            }
+            }            
 
             else if (strncmp(line, "draw", 4) == 0) {
                 int x, y;
@@ -180,7 +200,7 @@ void *monitor_run_script(void *arg) {
     int count;
     char **lines = read_script(args->script_file, &count);
     if (!lines) {
-        printf("No se pudo leer el script\n");
+        fprintf(stderr, "[ERROR] No se pudo leer el script: %s\n", args->script_file);
         return NULL;
     }
 
