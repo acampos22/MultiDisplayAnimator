@@ -20,6 +20,13 @@ typedef struct {
     int y_max;
 } region_t;
 
+typedef struct {
+    const char *script_file;
+    int monitor_id;
+    int y_min;
+    int y_max;
+} monitor_args_t;
+
 long get_elapsed_time_ms(struct timeval start_time) {
     struct timeval now;
     gettimeofday(&now, NULL);
@@ -110,7 +117,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 prev_shape = rotada;
                 prev_x = x;
                 prev_y = y;
-                free(s); // solo rotada se mantiene para siguiente paso
+                free(s);
                 usleep(300000);
             }
 
@@ -126,17 +133,13 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                         return;
                     }
 
-                    // Esperar a que la nueva posición esté libre
                     int next_x = x + dx;
                     int next_y = y + dy;
                     while (!canvas_file_is_free(next_x, next_y)) {
                         usleep(100000);
                     }
 
-                    // Borrar forma actual
                     clear_shape_from_canvas(x, y, prev_shape);
-
-                    // Dibujar en nueva posición
                     draw_shape_on_canvas(next_x, next_y, prev_shape);
                     x = next_x;
                     y = next_y;
@@ -169,38 +172,23 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
     }
 }
 
-int main(int argc, char *argv[]) {
+void *monitor_run_script(void *arg) {
+    monitor_args_t *args = (monitor_args_t *)arg;
+
     canvas_file_init();
 
-    if (argc != 6 && argc != 7) {
-        printf("Uso: %s <archivo.script> <letra> <y_min> <y_max> <monitor_id> [--clean]\n", argv[0]);
-        return 1;
-    }
-
-    const char *script_file = argv[1];
-    char letter = argv[2][0];
-    int y_min = atoi(argv[3]);
-    int y_max = atoi(argv[4]);
-    int id = atoi(argv[5]);
-
-    if (argc == 7 && strcmp(argv[6], "--clean") == 0) {
-        char cleanup_file[64];
-        snprintf(cleanup_file, sizeof(cleanup_file), "handoff_monitor%d", id);
-        remove(cleanup_file);
-    }
-
-    region_t region = { .id = id, .y_min = y_min, .y_max = y_max };
-
     int count;
-    char **lines = read_script(script_file, &count);
+    char **lines = read_script(args->script_file, &count);
     if (!lines) {
         printf("No se pudo leer el script\n");
-        return 1;
+        return NULL;
     }
+
+    region_t region = { .id = args->monitor_id, .y_min = args->y_min, .y_max = args->y_max };
 
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
 
-    run_script(lines, count, letter, region, start_time);
-    return 0;
+    run_script(lines, count, 'A' + args->monitor_id, region, start_time);
+    return NULL;
 }

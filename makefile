@@ -13,10 +13,10 @@ RENDER_LOOP = render_loop
 all: $(MONITOR_PROCESS) $(RENDER_LOOP)
 
 $(MONITOR_PROCESS): $(MONITOR_PROCESS_SRC) $(SRC_COMMON)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
+    $(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
 
 $(RENDER_LOOP): $(RENDER_LOOP_SRC) $(SRC_COMMON)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
+    $(CC) $(CFLAGS) $(INCLUDES) $^ -o $@
 
 clean:
-	rm -f $(MONITOR_PROCESS) $(RENDER_LOOP)
+    rm -f $(MONITOR_PROCESS) $(RENDER_LOOP)
