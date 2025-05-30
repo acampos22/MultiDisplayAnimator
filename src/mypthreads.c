@@ -19,7 +19,6 @@ int my_thread_create(my_thread_t **thread, scheduler_type_t sched, void *(*start
 
     (*thread)->id = next_id++;
     (*thread)->sched_type = sched;
-    (*thread)->state = READY;
     (*thread)->retval = NULL;
     (*thread)->detached = 0;
     (*thread)->joined = 0;
@@ -38,7 +37,11 @@ int my_thread_create(my_thread_t **thread, scheduler_type_t sched, void *(*start
     makecontext(&(*thread)->context, (void (*)())thread_starter, 2,
                 (uintptr_t)start_routine, (uintptr_t)arg);
 
-    scheduler_add_thread(*thread);
+    (*thread)->state = READY;               // ✅ AHORA sí, después de makecontext
+    scheduler_add_thread(*thread);           // ✅ Después de todo lo anterior
+printf("🆕 Hilo creado: id=%d | estado=%d | tipo=%d\n", 
+        (*thread)->id, (*thread)->state, (*thread)->sched_type);
+
     return 0;
 }
 
@@ -56,13 +59,15 @@ void my_thread_end(void *retval) {
     my_thread_t *next = scheduler_next_thread();
 
     if (!next) {
-        // No hay más hilos vivos
+        // No hay más hilos vivos → terminamos el programa
         exit(0);
     }
 
     current_thread = next;
     setcontext(&current_thread->context);
 }
+
+
 
 void my_thread_yield() {
     my_thread_t *prev = current_thread;
@@ -73,6 +78,7 @@ void my_thread_yield() {
     current_thread = next;
     swapcontext(&prev->context, &next->context);
 }
+
 
 int my_thread_join(my_thread_t *thread, void **retval) {
     if (!thread || thread->detached) return -1;

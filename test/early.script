@@ -1,0 +1,3 @@
+lifetime start=0 end=10000
+draw_shape x=10 y=5 file=test/fig.txt angle=0
+move x=20 y=5 dx=1 dy=0 steps=10 char=L

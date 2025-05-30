@@ -1,124 +1,142 @@
-#define _DEFAULT_SOURCE
-#define _XOPEN_SOURCE 700
+    #define _DEFAULT_SOURCE
+    #define _XOPEN_SOURCE 700
 
-#include "../includes/shape.h"
-#include "../includes/canvas_file.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+    #include "../includes/shape.h"
+    #include "../includes/canvas_file.h"
+    #include <stdlib.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <unistd.h>
+    #include <stdbool.h>
 
-Shape *load_shape(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) return NULL;
+    Shape *load_shape(const char *filename) {
+        FILE *file = fopen(filename, "r");
+        if (!file) return NULL;
 
-    Shape *shape = malloc(sizeof(Shape));
-    if (!shape) return NULL;
-    memset(shape, 0, sizeof(Shape));
+        Shape *shape = malloc(sizeof(Shape));
+        if (!shape) return NULL;
+        memset(shape, 0, sizeof(Shape));
 
-    if (fgets(shape->name, sizeof(shape->name), file)) {
-        shape->name[strcspn(shape->name, "\n")] = 0;
-    }
-
-    char line[MAX_SHAPE_WIDTH + 2];
-    int row = 0;
-    while (fgets(line, sizeof(line), file) && row < MAX_SHAPE_HEIGHT) {
-        line[strcspn(line, "\n")] = '\0';
-        int len = strlen(line);
-        if (len > shape->width) shape->width = len;
-
-        for (int col = 0; col < len && col < MAX_SHAPE_WIDTH; col++) {
-            shape->pixels[row][col] = line[col];
+        if (fgets(shape->name, sizeof(shape->name), file)) {
+            shape->name[strcspn(shape->name, "\n")] = 0;
         }
-        row++;
+
+        char line[MAX_SHAPE_WIDTH + 2];
+        int row = 0;
+        while (fgets(line, sizeof(line), file) && row < MAX_SHAPE_HEIGHT) {
+            line[strcspn(line, "\n")] = '\0';
+            int len = strlen(line);
+            if (len > shape->width) shape->width = len;
+
+            for (int col = 0; col < len && col < MAX_SHAPE_WIDTH; col++) {
+                shape->pixels[row][col] = line[col];
+            }
+            row++;
+        }
+
+        shape->height = row;
+        fclose(file);
+        return shape;
     }
 
-    shape->height = row;
-    fclose(file);
-    return shape;
-}
+    Shape *rotate_shape(const Shape *orig, int angle) {
+        Shape *rot = malloc(sizeof(Shape));
+        if (!rot) return NULL;
+        memset(rot->pixels, ' ', sizeof(rot->pixels));
+        strcpy(rot->name, orig->name);
 
-Shape *rotate_shape(const Shape *orig, int angle) {
-    Shape *rot = malloc(sizeof(Shape));
-    if (!rot) return NULL;
-    memset(rot->pixels, ' ', sizeof(rot->pixels));
-    strcpy(rot->name, orig->name);
+        switch (angle) {
+            case 0:
+                rot->width = orig->width;
+                rot->height = orig->height;
+                for (int i = 0; i < orig->height; i++)
+                    for (int j = 0; j < orig->width; j++)
+                        rot->pixels[i][j] = orig->pixels[i][j];
+                break;
+            case 90:
+                rot->width = orig->height;
+                rot->height = orig->width;
+                for (int i = 0; i < orig->height; i++)
+                    for (int j = 0; j < orig->width; j++)
+                        rot->pixels[j][orig->height - 1 - i] = orig->pixels[i][j];
+                break;
+            case 180:
+                rot->width = orig->width;
+                rot->height = orig->height;
+                for (int i = 0; i < orig->height; i++)
+                    for (int j = 0; j < orig->width; j++)
+                        rot->pixels[orig->height - 1 - i][orig->width - 1 - j] = orig->pixels[i][j];
+                break;
+            case 270:
+                rot->width = orig->height;
+                rot->height = orig->width;
+                for (int i = 0; i < orig->height; i++)
+                    for (int j = 0; j < orig->width; j++)
+                        rot->pixels[orig->width - 1 - j][i] = orig->pixels[i][j];
+                break;
+            default:
+                free(rot);
+                return NULL;
+        }
 
-    switch (angle) {
-        case 0:
-            rot->width = orig->width;
-            rot->height = orig->height;
-            for (int i = 0; i < orig->height; i++)
-                for (int j = 0; j < orig->width; j++)
-                    rot->pixels[i][j] = orig->pixels[i][j];
-            break;
-        case 90:
-            rot->width = orig->height;
-            rot->height = orig->width;
-            for (int i = 0; i < orig->height; i++)
-                for (int j = 0; j < orig->width; j++)
-                    rot->pixels[j][orig->height - 1 - i] = orig->pixels[i][j];
-            break;
-        case 180:
-            rot->width = orig->width;
-            rot->height = orig->height;
-            for (int i = 0; i < orig->height; i++)
-                for (int j = 0; j < orig->width; j++)
-                    rot->pixels[orig->height - 1 - i][orig->width - 1 - j] = orig->pixels[i][j];
-            break;
-        case 270:
-            rot->width = orig->height;
-            rot->height = orig->width;
-            for (int i = 0; i < orig->height; i++)
-                for (int j = 0; j < orig->width; j++)
-                    rot->pixels[orig->width - 1 - j][i] = orig->pixels[i][j];
-            break;
-        default:
-            free(rot);
-            return NULL;
+        return rot;
     }
 
-    return rot;
-}
+    void draw_shape_on_canvas(int x, int y, const Shape *shape) {
+        // Esperar hasta que todas las celdas necesarias estén libres
+        for (int i = 0; i < shape->height; i++) {
+            for (int j = 0; j < shape->width; j++) {
+                char c = shape->pixels[i][j];
+                if (c != ' ' && c != '\0') {
+                    int abs_x = x + j;
+                    int abs_y = y + i;
+                    while (!canvas_file_is_free(abs_x, abs_y)) {
+                        usleep(30000);  // Espera si no está libre
+                    }
+                }
+            }
+        }
 
-void draw_shape_on_canvas(int x, int y, const Shape *shape) {
-    // Esperar hasta que todas las celdas necesarias estén libres
-    for (int i = 0; i < shape->height; i++) {
-        for (int j = 0; j < shape->width; j++) {
-            char c = shape->pixels[i][j];
-            if (c != ' ' && c != '\0') {
-                int abs_x = x + j;
-                int abs_y = y + i;
-                while (!canvas_file_is_free(abs_x, abs_y)) {
-                    usleep(30000);  // Espera si no está libre
+        // Dibujar
+        for (int i = 0; i < shape->height; i++) {
+            for (int j = 0; j < shape->width; j++) {
+                char c = shape->pixels[i][j];
+                if (c != ' ' && c != '\0') {
+                    int abs_x = x + j;
+                    int abs_y = y + i;
+                    canvas_file_draw(abs_x, abs_y, c);
                 }
             }
         }
     }
 
-    // Dibujar
-    for (int i = 0; i < shape->height; i++) {
-        for (int j = 0; j < shape->width; j++) {
-            char c = shape->pixels[i][j];
-            if (c != ' ' && c != '\0') {
-                int abs_x = x + j;
-                int abs_y = y + i;
-                canvas_file_draw(abs_x, abs_y, c);
+    void clear_shape_from_canvas(int x, int y, const Shape *shape) {
+        for (int i = 0; i < shape->height; i++) {
+            for (int j = 0; j < shape->width; j++) {
+                char c = shape->pixels[i][j];
+                if (c != ' ' && c != '\0') {
+                    int abs_x = x + j;
+                    int abs_y = y + i;
+                    canvas_file_draw(abs_x, abs_y, ' ');
+                }
             }
         }
     }
-}
 
-void clear_shape_from_canvas(int x, int y, const Shape *shape) {
+
+bool can_draw_shape(int x, int y, const Shape *shape) {
     for (int i = 0; i < shape->height; i++) {
         for (int j = 0; j < shape->width; j++) {
             char c = shape->pixels[i][j];
             if (c != ' ' && c != '\0') {
                 int abs_x = x + j;
                 int abs_y = y + i;
-                canvas_file_draw(abs_x, abs_y, ' ');
+                if (!canvas_file_is_free(abs_x, abs_y)) {
+                    return false;
+                }
             }
         }
     }
+    return true;
 }
 

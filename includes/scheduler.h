@@ -12,6 +12,7 @@ extern my_thread_t *current_thread;
 void scheduler_init();
 void scheduler_add_thread(my_thread_t *thread);
 void scheduler_remove_thread(my_thread_t *thread);
+void debug_scheduler();
 my_thread_t *scheduler_next_thread();
 
 #endif

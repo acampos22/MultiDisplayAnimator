@@ -3,6 +3,8 @@
 #include "../includes/scheduler.h"
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
+
 
 // Declaración de funciones internas
 static my_thread_t *select_lottery();
@@ -17,8 +19,26 @@ void scheduler_init() {
     srand(time(NULL));
 }
 
+
+void debug_scheduler() {
+    printf("🔍 Estado actual del scheduler:\n");
+    my_thread_t *tmp = head;
+    if (!tmp) {
+        printf("  🚫 Lista vacía\n");
+        return;
+    }
+
+    do {
+        printf("  🧵 Hilo %d | Estado: %d | Tipo: %d | Deadline: %ld\n",
+               tmp->id, tmp->state, tmp->sched_type, tmp->deadline);
+        tmp = tmp->next;
+    } while (tmp && tmp != head);
+}
+
 void scheduler_add_thread(my_thread_t *thread) {
     thread->state = READY;
+    printf("📥 Agregado al scheduler: hilo %d\n", thread->id);
+
     if (!head) {
         head = tail = thread;
         thread->next = head;
@@ -66,16 +86,20 @@ my_thread_t *scheduler_next_thread() {
     if (!head) return NULL;
 
     my_thread_t *start = current_thread ? current_thread : head;
-    my_thread_t *next = current_thread ? current_thread->next : head;
+    my_thread_t *next = (current_thread && current_thread->next) ? current_thread->next : head;
 
-    do {
-        if (next->state == READY && next->sched_type == RR)
-            return next;
-        next = next->next;
-    } while (next != start);
+if (!next) return NULL;
 
-    return NULL;
+do {
+    if (next->state == READY && next->sched_type == RR)
+        return next;
+    next = next->next;
+} while (next && next != start);
+
+return NULL;
+
 }
+
 
 // LOTTERY Scheduler
 static my_thread_t *select_lottery() {

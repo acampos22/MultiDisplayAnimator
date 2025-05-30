@@ -1,0 +1,2 @@
+monitor test/early.script 0
+monitor test/late.script 1

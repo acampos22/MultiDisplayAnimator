@@ -13,11 +13,13 @@
 
 // Tamaño del stack para cada hilo (32 KB)
 #define STACK_SIZE 32768
+
 typedef enum {
-    READY,
-    RUNNING,
-    BLOCKED,
-    TERMINATED
+    CREATED = 0,
+    READY = 1,
+    RUNNING = 2,
+    BLOCKED = 3,
+    TERMINATED = 4
 } thread_state_t;
 
 typedef enum {

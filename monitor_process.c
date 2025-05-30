@@ -1,7 +1,6 @@
 // monitor_process.c
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 700
-
 #include "shape.h"
 #include "../includes/utils.h"
 #include "../includes/canvas_file.h"
@@ -13,6 +12,8 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "../includes/mypthreads.h"
+
 
 #define HANDOFF_PREFIX "handoff_"
 
@@ -61,6 +62,7 @@ void signal_handoff(const char *target_id) {
 
 void run_script(char **script, int lines, char id, region_t region, struct timeval start_time) {
     int i = 0;
+    printf("🟢 Entrando a run_script para hilo %d\n", region.id);
     Shape *prev_shape = NULL;
     int prev_x = -1, prev_y = -1;
 
@@ -82,6 +84,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
 
         for (int j = block_start; j < block_end; j++) {
             char *line = script[j];
+            printf("📜 Ejecutando línea: %s", script[j]);
 
             if (get_elapsed_time_ms(start_time) > lifetime_end) {
                 if (prev_shape) {
@@ -132,8 +135,10 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
             
                 printf("➡️  Ejecutando movimiento\n");
             
-                int x, y, dx, dy, steps;
-                if (sscanf(line, "move x=%d y=%d dx=%d dy=%d steps=%d char=%*c", &x, &y, &dx, &dy, &steps) != 5) {
+                int x = prev_x;
+                int y = prev_y;
+                int dx, dy, steps;
+                if (sscanf(line, "move x=%*d y=%*d dx=%d dy=%d steps=%d char=%*c", &dx, &dy, &steps) != 3) {
                     fprintf(stderr, "[ERROR] Línea move malformada: %s\n", line);
                     continue;
                 }
@@ -167,8 +172,10 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                     prev_y = y;
             
                     usleep(300000);
+                    my_thread_yield();
                 }
-            }            
+            }
+                    
 
             else if (strncmp(line, "draw", 4) == 0) {
                 int x, y;
@@ -193,10 +200,15 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
 }
 
 void *monitor_run_script(void *arg) {
-    monitor_args_t *args = (monitor_args_t *)arg;
+    monitor_args_t *args = (monitor_args_t *)arg;  // 🔁 Mover esta línea arriba
 
-    canvas_file_init();
+    printf("✅ Entró a monitor_run_script | hilo %d | script: %s\n",
+           args->monitor_id, args->script_file);
+    fflush(stdout);
 
+    if (args->monitor_id == 0) {
+        canvas_file_init();  
+    }
     int count;
     char **lines = read_script(args->script_file, &count);
     if (!lines) {
