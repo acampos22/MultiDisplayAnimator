@@ -1,6 +1,4 @@
-lifetime start=0 end=100000
-draw_shape x=14 y=5 file=test/fig.txt angle=0
-move x=14 y=5 dx=1 dy=0 steps=3 char=L
-draw_shape x=17 y=5 file=test/fig.txt angle=90
-move x=17 y=5 dx=1 dy=0 steps=3 char=L
-
+type=RR
+lifetime start=0 end=16000
+draw_shape x=5 y=3 file=test/fig.txt angle=0
+move x=5 y=3 dx=1 dy=0 steps=18 char=A

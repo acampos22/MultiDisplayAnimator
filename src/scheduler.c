@@ -29,7 +29,7 @@ void debug_scheduler() {
     }
 
     do {
-        printf("  🧵 Hilo %d | Estado: %d | Tipo: %d | Deadline: %ld\n",
+        printf("  🧵 Hilo %d | Estado: %d | Tipo: %d | Deadline: %d\n",
                tmp->id, tmp->state, tmp->sched_type, tmp->deadline);
         tmp = tmp->next;
     } while (tmp && tmp != head);
@@ -70,17 +70,22 @@ void scheduler_remove_thread(my_thread_t *thread) {
         cur = cur->next;
     } while (cur != head);
 }
-
 my_thread_t *scheduler_next_thread() {
     my_thread_t *selected = NULL;
 
     // LOTTERY
     selected = select_lottery();
-    if (selected) return selected;
+    if (selected) {
+        printf("🎯 Scheduler eligió hilo %d (tipo LOTTERY)\n", selected->id);
+        return selected;
+    }
 
     // REALTIME
     selected = select_realtime();
-    if (selected) return selected;
+    if (selected) {
+        printf("🎯 Scheduler eligió hilo %d (tipo REALTIME)\n", selected->id);
+        return selected;
+    }
 
     // ROUND ROBIN
     if (!head) return NULL;
@@ -88,21 +93,29 @@ my_thread_t *scheduler_next_thread() {
     my_thread_t *start = current_thread ? current_thread : head;
     my_thread_t *next = (current_thread && current_thread->next) ? current_thread->next : head;
 
-if (!next) return NULL;
+    if (!next) return NULL;
 
-do {
-    if (next->state == READY && next->sched_type == RR)
-        return next;
-    next = next->next;
-} while (next && next != start);
+    do {
+        if (next->state == READY && next->sched_type == RR) {
+            printf("🎯 Scheduler eligió hilo %d (tipo RR)\n", next->id);
+            return next;
+        }
+        next = next->next;
+    } while (next && next != start);
 
-return NULL;
-
+    return NULL;
 }
 
 
-// LOTTERY Scheduler
 static my_thread_t *select_lottery() {
+    static int lottery_turns = 0;
+    const int MAX_LOTTERY_TURNS = 3;
+
+    if (lottery_turns >= MAX_LOTTERY_TURNS) {
+        lottery_turns = 0;
+        return NULL;  // 🔁 Cede el turno a otro tipo (como RR)
+    }
+
     int total_tickets = 0;
     my_thread_t *tmp = head;
 
@@ -121,8 +134,10 @@ static my_thread_t *select_lottery() {
 
     do {
         if (tmp->state == READY && tmp->sched_type == LOTTERY) {
-            if (winner < tmp->tickets)
+            if (winner < tmp->tickets) {
+                lottery_turns++;  // 🎯 Gana un turno más
                 return tmp;
+            }
             winner -= tmp->tickets;
         }
         tmp = tmp->next;
@@ -131,8 +146,15 @@ static my_thread_t *select_lottery() {
     return NULL;
 }
 
-// REALTIME Scheduler
 static my_thread_t *select_realtime() {
+    static int realtime_turns = 0;
+    const int MAX_REALTIME_TURNS = 3;
+
+    if (realtime_turns >= MAX_REALTIME_TURNS) {
+        realtime_turns = 0;
+        return NULL;  // 💤 Cede el paso a RR o Lottery
+    }
+
     my_thread_t *selected = NULL;
     my_thread_t *tmp = head;
 
@@ -146,5 +168,6 @@ static my_thread_t *select_realtime() {
         tmp = tmp->next;
     } while (tmp != head);
 
+    if (selected) realtime_turns++;
     return selected;
 }

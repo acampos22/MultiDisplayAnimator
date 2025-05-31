@@ -34,14 +34,22 @@ long get_elapsed_time_ms(struct timeval start_time) {
 }
 
 void show_boom(int x, int y, const Shape *shape) {
-    if (shape) clear_shape_from_canvas(x, y, shape);
+    if (shape) {
+        clear_shape_from_canvas(x, y, shape);  // ✅ Limpia bien el área
+    }
+
+    // 💥 Mostrar texto de explosión
     canvas_file_draw(x, y, '*');
     canvas_file_draw(x + 1, y, 'B');
     canvas_file_draw(x + 2, y, 'O');
     canvas_file_draw(x + 3, y, 'O');
     canvas_file_draw(x + 4, y, 'M');
     usleep(600000);
-    for (int i = 0; i < 5; i++) canvas_file_draw(x + i, y, ' ');
+
+    // 🧼 Limpiar área de explosión
+    for (int i = 0; i < 5; i++) {
+        canvas_file_draw(x + i, y, ' ');
+    }
 }
 
 void wait_for_handoff(const char *target_id) {
@@ -147,6 +155,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 for (int s = 0; s < steps; s++) {
                     if (get_elapsed_time_ms(start_time) > lifetime_end) {
                         show_boom(x, y, prev_shape);
+                        clear_shape_from_canvas(x, y, prev_shape);
                         free(prev_shape);
                         prev_shape = NULL;
                         return;
@@ -163,6 +172,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
             
                     // ⏳ Esperar hasta que el nuevo espacio esté libre o se agote el tiempo
                     while (!can_draw_shape_ignore_self(next_x, next_y, prev_shape, x, y)) {
+                        printf("✅ Espacio liberado, intento de mover figura %c a (%d, %d)\n", id, next_x, next_y);
                         if (get_elapsed_time_ms(start_time) > lifetime_end) {
                             show_boom(x, y, prev_shape);
                             free(prev_shape);

@@ -44,14 +44,20 @@ int main(int argc, char *argv[]) {
         }
 
         long deadline = 9999999;
+        scheduler_type_t tipo = RR;  // Valor por defecto
+
         char sline[128];
         while (fgets(sline, sizeof(sline), script)) {
+            if (strncmp(sline, "type=RR", 7) == 0) tipo = RR;
+            else if (strncmp(sline, "type=LOTTERY", 12) == 0) tipo = LOTTERY;
+            else if (strncmp(sline, "type=REALTIME", 13) == 0) tipo = REALTIME;
+
             if (strncmp(sline, "lifetime", 8) == 0) {
                 int start = 0, end = 9999999;
                 if (sscanf(sline, "lifetime start=%d end=%d", &start, &end) == 2) {
                     deadline = end;
-                    break;
                 }
+                break;
             }
         }
         fclose(script);
@@ -63,7 +69,7 @@ int main(int argc, char *argv[]) {
         args->y_max = 14;
         args->deadline_ms = deadline;
 
-        if (my_thread_create(&hilos[num_hilos], RR, monitor_run_script, args) != 0) {
+        if (my_thread_create(&hilos[num_hilos], tipo, monitor_run_script, args) != 0) {
             fprintf(stderr, "Error creando hilo %d\n", num_hilos);
             free(args);
             continue;
@@ -76,17 +82,16 @@ int main(int argc, char *argv[]) {
     fclose(f);
 
     static my_thread_t main_thread;
-memset(&main_thread, 0, sizeof(my_thread_t));
-main_thread.id = 0;
-main_thread.state = RUNNING;
-current_thread = &main_thread;
+    memset(&main_thread, 0, sizeof(my_thread_t));
+    main_thread.id = 0;
+    main_thread.state = RUNNING;
+    current_thread = &main_thread;
 
-my_thread_t *next = scheduler_next_thread();
-if (next) {
-    current_thread = next;
-    setcontext(&next->context);  // 🟢 LANZA el primer hilo
-}
+    my_thread_t *next = scheduler_next_thread();
+    if (next) {
+        current_thread = next;
+        setcontext(&next->context);  // 🟢 LANZA el primer hilo
+    }
 
-return 0;
-
+    return 0;
 }
