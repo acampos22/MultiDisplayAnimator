@@ -135,13 +135,14 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
             
                 printf("➡️  Ejecutando movimiento\n");
             
-                int x = prev_x;
-                int y = prev_y;
                 int dx, dy, steps;
                 if (sscanf(line, "move x=%*d y=%*d dx=%d dy=%d steps=%d char=%*c", &dx, &dy, &steps) != 3) {
                     fprintf(stderr, "[ERROR] Línea move malformada: %s\n", line);
                     continue;
                 }
+            
+                int x = prev_x;
+                int y = prev_y;
             
                 for (int s = 0; s < steps; s++) {
                     if (get_elapsed_time_ms(start_time) > lifetime_end) {
@@ -154,17 +155,25 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                     int next_x = x + dx;
                     int next_y = y + dy;
             
-                    if (next_x < 0 || next_x >= CANVAS_WIDTH || next_y < 0 || next_y >= CANVAS_HEIGHT) {
+                    if (next_x < 0 || next_x + prev_shape->width > CANVAS_WIDTH ||
+                        next_y < 0 || next_y + prev_shape->height > CANVAS_HEIGHT) {
                         fprintf(stderr, "[WARN] Movimiento fuera del canvas: (%d, %d)\n", next_x, next_y);
                         continue;
                     }
             
-                    while (!canvas_file_is_free(next_x, next_y)) {
-                        printf("⏳ Esperando que (%d, %d) esté libre...\n", next_x, next_y);
-                        usleep(100000);
+                    // ✨ Limpia temporalmente del canvas para evitar colisión consigo misma
+                    clear_shape_from_canvas(x, y, prev_shape);
+            
+                    // 💥 Revisa si el nuevo espacio está libre
+                    if (!can_draw_shape(next_x, next_y, prev_shape)) {
+                        printf("🟥 Colisión detectada al intentar mover figura a (%d, %d)\n", next_x, next_y);
+                        show_boom(x, y, prev_shape);
+                        free(prev_shape);
+                        prev_shape = NULL;
+                        return;
                     }
             
-                    clear_shape_from_canvas(x, y, prev_shape);
+                    // ✅ Movimiento válido → dibuja en la nueva posición
                     draw_shape_on_canvas(next_x, next_y, prev_shape);
                     x = next_x;
                     y = next_y;
@@ -174,9 +183,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                     usleep(300000);
                     my_thread_yield();
                 }
-            }
-                    
-
+            }             
             else if (strncmp(line, "draw", 4) == 0) {
                 int x, y;
                 sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
