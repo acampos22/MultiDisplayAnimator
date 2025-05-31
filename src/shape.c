@@ -123,20 +123,62 @@
         }
     }
 
-
-bool can_draw_shape(int x, int y, const Shape *shape) {
-    for (int i = 0; i < shape->height; i++) {
-        for (int j = 0; j < shape->width; j++) {
-            char c = shape->pixels[i][j];
-            if (c != ' ' && c != '\0') {
-                int abs_x = x + j;
-                int abs_y = y + i;
-                if (!canvas_file_is_free(abs_x, abs_y)) {
-                    return false;
+    bool can_draw_shape_ignore_self(int new_x, int new_y, const Shape *shape, int old_x, int old_y) {
+        for (int i = 0; i < shape->height; i++) {
+            for (int j = 0; j < shape->width; j++) {
+                char c = shape->pixels[i][j];
+                if (c != ' ' && c != '\0') {
+                    int abs_new_x = new_x + j;
+                    int abs_new_y = new_y + i;
+    
+                    // ⚠️ IMPORTANTE: no asumimos que (new_x+dx, new_y+dy) == old_x+dx
+                    // En cambio, revisamos si esa celda estaba ocupada antes
+    
+                    // Si la celda también estaba ocupada en la posición anterior, ignoramos la colisión
+                    int local_old_x = abs_new_x - old_x;
+                    int local_old_y = abs_new_y - old_y;
+    
+                    if (local_old_x >= 0 && local_old_x < shape->width &&
+                        local_old_y >= 0 && local_old_y < shape->height &&
+                        shape->pixels[local_old_y][local_old_x] != ' ' &&
+                        shape->pixels[local_old_y][local_old_x] != '\0') {
+                        continue;  // Celda ya ocupada antes por esta misma figura
+                    }
+    
+                    if (!canvas_file_is_free(abs_new_x, abs_new_y)) {
+                        return false;
+                    }
                 }
             }
         }
+        return true;
     }
-    return true;
-}
+    
+    
+
+    bool can_draw_shape(int new_x, int new_y, const Shape *shape, int old_x, int old_y) {
+        for (int i = 0; i < shape->height; i++) {
+            for (int j = 0; j < shape->width; j++) {
+                char c = shape->pixels[i][j];
+                if (c != ' ' && c != '\0') {
+                    int abs_new_x = new_x + j;
+                    int abs_new_y = new_y + i;
+                    int abs_old_x = old_x + j;
+                    int abs_old_y = old_y + i;
+    
+                    // 🔁 Si la celda es la misma que la que ya ocupaba antes, ignorala
+                    if (abs_new_x == abs_old_x && abs_new_y == abs_old_y) {
+                        continue;
+                    }
+    
+                    if (!canvas_file_is_free(abs_new_x, abs_new_y)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    
+    
 

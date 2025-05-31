@@ -161,19 +161,21 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                         continue;
                     }
             
-                    // ✨ Limpia temporalmente del canvas para evitar colisión consigo misma
-                    clear_shape_from_canvas(x, y, prev_shape);
-            
-                    // 💥 Revisa si el nuevo espacio está libre
-                    if (!can_draw_shape(next_x, next_y, prev_shape)) {
-                        printf("🟥 Colisión detectada al intentar mover figura a (%d, %d)\n", next_x, next_y);
-                        show_boom(x, y, prev_shape);
-                        free(prev_shape);
-                        prev_shape = NULL;
-                        return;
+                    // ⏳ Esperar hasta que el nuevo espacio esté libre o se agote el tiempo
+                    while (!can_draw_shape_ignore_self(next_x, next_y, prev_shape, x, y)) {
+                        if (get_elapsed_time_ms(start_time) > lifetime_end) {
+                            show_boom(x, y, prev_shape);
+                            free(prev_shape);
+                            prev_shape = NULL;
+                            return;
+                        }
+                        printf("🟥 Celda ocupada, esperando... (%d, %d)\n", next_x, next_y);
+                        usleep(50000);
+                        my_thread_yield();
                     }
             
-                    // ✅ Movimiento válido → dibuja en la nueva posición
+                    // ✅ Movimiento válido, limpia posición vieja y dibuja en nueva
+                    clear_shape_from_canvas(x, y, prev_shape);
                     draw_shape_on_canvas(next_x, next_y, prev_shape);
                     x = next_x;
                     y = next_y;
@@ -183,7 +185,8 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                     usleep(300000);
                     my_thread_yield();
                 }
-            }             
+            }
+            
             else if (strncmp(line, "draw", 4) == 0) {
                 int x, y;
                 sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
