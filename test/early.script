@@ -1,4 +1,4 @@
-type=RR
-lifetime start=0 end=16000
+type=REALTIME
+lifetime start=2000 end=14000
 draw_shape x=5 y=3 file=test/fig.txt angle=0
-move x=5 y=3 dx=1 dy=0 steps=18 char=A
+move x=5 y=3 dx=1 dy=0 steps=12 char=A

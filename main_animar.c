@@ -1,11 +1,12 @@
 #include "../includes/mypthreads.h"
 #include "../includes/utils.h"
 #include "../includes/monitor_process.h"
-#include "../includes/scheduler.h"  // ✅ Para usar scheduler_next_thread
+#include "../includes/scheduler.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <sys/time.h>  // 🕒 Necesario para gettimeofday
 
 extern my_thread_t *current_thread;
 
@@ -23,6 +24,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "❌ No se pudo abrir el archivo de configuración: %s\n", config_file);
         return 1;
     }
+
+    // 🕒 Capturar el tiempo global de inicio
+    struct timeval global_start_time;
+    gettimeofday(&global_start_time, NULL);
 
     my_thread_t *hilos[MAX_MONITORES];
     int num_hilos = 0;
@@ -44,7 +49,7 @@ int main(int argc, char *argv[]) {
         }
 
         long deadline = 9999999;
-        scheduler_type_t tipo = RR;  // Valor por defecto
+        scheduler_type_t tipo = RR;
 
         char sline[128];
         while (fgets(sline, sizeof(sline), script)) {
@@ -68,6 +73,7 @@ int main(int argc, char *argv[]) {
         args->y_min = 0;
         args->y_max = 14;
         args->deadline_ms = deadline;
+        args->start_time = global_start_time;  // ✅ Asignar tiempo global
 
         if (my_thread_create(&hilos[num_hilos], tipo, monitor_run_script, args) != 0) {
             fprintf(stderr, "Error creando hilo %d\n", num_hilos);
@@ -90,7 +96,7 @@ int main(int argc, char *argv[]) {
     my_thread_t *next = scheduler_next_thread();
     if (next) {
         current_thread = next;
-        setcontext(&next->context);  // 🟢 LANZA el primer hilo
+        setcontext(&next->context);
     }
 
     return 0;
