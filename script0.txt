@@ -1,0 +1,4 @@
+type=RR
+lifetime start=0 end=10000
+draw_shape x=10 y=1 file=test/fig.txt angle=0
+move x=10 y=5 dx=0 dy=1 steps=12 char=A

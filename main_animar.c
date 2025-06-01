@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include "../includes/mypthreads.h"
 #include "../includes/utils.h"
 #include "../includes/monitor_process.h"
@@ -6,26 +7,49 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <sys/time.h>  // 🕒 Necesario para gettimeofday
+#include <sys/time.h>
+#include "canvas.h"
+#include "monitor_socket_listener.h"
 
 extern my_thread_t *current_thread;
 
 #define MAX_MONITORES 10
 
 int main(int argc, char *argv[]) {
-    if (argc < 3 || strcmp(argv[1], "-c") != 0) {
-        fprintf(stderr, "Uso: %s -c <archivo_configuracion>\n", argv[0]);
+    const char *config_file = NULL;
+    int port_actual = 0;
+    int port_siguiente = 0;
+    int ymin = 0, ymax = CANVAS_HEIGHT - 1;
+
+    // Leer argumentos
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
+            config_file = argv[++i];
+        } else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
+            port_actual = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+            port_siguiente = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-ymin") == 0 && i + 1 < argc) {
+            ymin = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-ymax") == 0 && i + 1 < argc) {
+            ymax = atoi(argv[++i]);
+        }
+        else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc)
+            port_siguiente = atoi(argv[++i]);
+
+    }
+
+    if (!config_file) {
+        fprintf(stderr, "Uso: %s -c <archivo_configuracion> [-p puerto] [-n siguiente] [-ymin v] [-ymax v]\n", argv[0]);
         return 1;
     }
 
-    const char *config_file = argv[2];
     FILE *f = fopen(config_file, "r");
     if (!f) {
         fprintf(stderr, "❌ No se pudo abrir el archivo de configuración: %s\n", config_file);
         return 1;
     }
 
-    // 🕒 Capturar el tiempo global de inicio
     struct timeval global_start_time;
     gettimeofday(&global_start_time, NULL);
 
@@ -70,10 +94,11 @@ int main(int argc, char *argv[]) {
         monitor_args_t *args = malloc(sizeof(monitor_args_t));
         strncpy(args->script_file, script_path, PATH_MAX);
         args->monitor_id = monitor_id;
-        args->y_min = 0;
-        args->y_max = 14;
+        args->y_min = ymin;
+        args->y_max = ymax;
         args->deadline_ms = deadline;
-        args->start_time = global_start_time;  // ✅ Asignar tiempo global
+        args->start_time = global_start_time;
+        args->port_siguiente = port_siguiente;
 
         if (my_thread_create(&hilos[num_hilos], tipo, monitor_run_script, args) != 0) {
             fprintf(stderr, "Error creando hilo %d\n", num_hilos);
@@ -92,6 +117,9 @@ int main(int argc, char *argv[]) {
     main_thread.id = 0;
     main_thread.state = RUNNING;
     current_thread = &main_thread;
+    pthread_t socket_thread;
+    pthread_create(&socket_thread, NULL, socket_listener, &port_actual);
+
 
     my_thread_t *next = scheduler_next_thread();
     if (next) {

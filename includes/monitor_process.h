@@ -9,8 +9,9 @@ typedef struct {
     int monitor_id;
     int y_min;
     int y_max;
+    int port_siguiente;
     long deadline_ms;
-    struct timeval start_time;  // 🕒 Compartido por todos los hilos
+    struct timeval start_time;
 } monitor_args_t;
 
 // Función que ejecuta un monitor en un hilo

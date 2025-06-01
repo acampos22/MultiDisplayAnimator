@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "../includes/mypthreads.h"
+#include "monitor_socket_listener.h"
 
 
 #define HANDOFF_PREFIX "handoff_"
@@ -21,6 +22,7 @@ typedef struct {
     int id;
     int y_min;
     int y_max;
+    int port_siguiente;
 } region_t;
 
 void debug_log(const char *msg) {
@@ -68,6 +70,7 @@ void signal_handoff(const char *target_id) {
     }
 }
 
+
 void run_script(char **script, int lines, char id, region_t region, struct timeval start_time) {
     int i = 0;
     printf("🟢 Entrando a run_script para hilo %d\n", region.id);
@@ -109,14 +112,10 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 if (sscanf(line, "draw_shape x=%d y=%d file=%s angle=%d", &x, &y, file, &angle) != 4) continue;
 
                 Shape *s = load_shape(file);
-                if (!s) {
-                    fprintf(stderr, "[ERROR] No se pudo cargar la forma desde: %s\n", file);
-                    continue;
-                }
+                if (!s) continue;
 
                 Shape *rotada = rotate_shape(s, angle);
                 if (!rotada) {
-                    fprintf(stderr, "[ERROR] Rotación fallida para: %s\n", file);
                     free(s);
                     continue;
                 }
@@ -124,7 +123,6 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                 if (prev_shape) {
                     clear_shape_from_canvas(prev_x, prev_y, prev_shape);
                     free(prev_shape);
-                    prev_shape = NULL;
                 }
 
                 draw_shape_on_canvas(x, y, rotada);
@@ -136,22 +134,14 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
             }
 
             else if (strncmp(line, "move", 4) == 0) {
-                if (prev_shape == NULL) {
-                    printf("⚠️  No hay forma previa cargada para mover\n");
-                    continue;
-                }
-            
-                printf("➡️  Ejecutando movimiento\n");
-            
+                if (prev_shape == NULL) continue;
+
                 int dx, dy, steps;
-                if (sscanf(line, "move x=%*d y=%*d dx=%d dy=%d steps=%d char=%*c", &dx, &dy, &steps) != 3) {
-                    fprintf(stderr, "[ERROR] Línea move malformada: %s\n", line);
-                    continue;
-                }
-            
+                if (sscanf(line, "move x=%*d y=%*d dx=%d dy=%d steps=%d char=%*c", &dx, &dy, &steps) != 3) continue;
+
                 int x = prev_x;
                 int y = prev_y;
-            
+
                 for (int s = 0; s < steps; s++) {
                     if (get_elapsed_time_ms(start_time) > lifetime_end) {
                         show_boom(x, y, prev_shape);
@@ -160,43 +150,41 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
                         prev_shape = NULL;
                         return;
                     }
-            
+
                     int next_x = x + dx;
                     int next_y = y + dy;
-            
-                    if (next_x < 0 || next_x + prev_shape->width > CANVAS_WIDTH ||
-                        next_y < 0 || next_y + prev_shape->height > CANVAS_HEIGHT) {
-                        fprintf(stderr, "[WARN] Movimiento fuera del canvas: (%d, %d)\n", next_x, next_y);
-                        continue;
+
+                    if (next_y < region.y_min || next_y > region.y_max) {
+                        printf("🚀 Figura %c sale de región [%d-%d], transfiriendo a otro monitor\n", id, region.y_min, region.y_max);
+                        send_shape_to_monitor("127.0.0.1", region.port_siguiente, next_x, next_y, dx, dy, steps - s, id);
+                        clear_shape_from_canvas(x, y, prev_shape);
+                        free(prev_shape);
+                        prev_shape = NULL;
+                        return;
                     }
-            
-                    // ⏳ Esperar hasta que el nuevo espacio esté libre o se agote el tiempo
+
                     while (!can_draw_shape_ignore_self(next_x, next_y, prev_shape, x, y)) {
-                        printf("✅ Espacio liberado, intento de mover figura %c a (%d, %d)\n", id, next_x, next_y);
                         if (get_elapsed_time_ms(start_time) > lifetime_end) {
                             show_boom(x, y, prev_shape);
                             free(prev_shape);
                             prev_shape = NULL;
                             return;
                         }
-                        printf("🟥 Celda ocupada, esperando... (%d, %d)\n", next_x, next_y);
                         usleep(50000);
                         my_thread_yield();
                     }
-            
-                    // ✅ Movimiento válido, limpia posición vieja y dibuja en nueva
+
                     clear_shape_from_canvas(x, y, prev_shape);
                     draw_shape_on_canvas(next_x, next_y, prev_shape);
                     x = next_x;
                     y = next_y;
                     prev_x = x;
                     prev_y = y;
-            
                     usleep(300000);
                     my_thread_yield();
                 }
             }
-            
+
             else if (strncmp(line, "draw", 4) == 0) {
                 int x, y;
                 sscanf(line, "draw x=%d y=%d char=%*c", &x, &y);
@@ -220,7 +208,7 @@ void run_script(char **script, int lines, char id, region_t region, struct timev
 }
 
 void *monitor_run_script(void *arg) {
-    monitor_args_t *args = (monitor_args_t *)arg;  // 🔁 Mover esta línea arriba
+    monitor_args_t *args = (monitor_args_t *)arg;
 
     printf("✅ Entró a monitor_run_script | hilo %d | script: %s\n",
            args->monitor_id, args->script_file);
@@ -236,7 +224,7 @@ void *monitor_run_script(void *arg) {
         return NULL;
     }
 
-    region_t region = { .id = args->monitor_id, .y_min = args->y_min, .y_max = args->y_max };
+    region_t region = { .id = args->monitor_id, .y_min = args->y_min, .y_max = args->y_max, .port_siguiente = args->port_siguiente };
 
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
@@ -244,3 +232,5 @@ void *monitor_run_script(void *arg) {
     run_script(lines, count, 'A' + args->monitor_id, region, start_time);
     return NULL;
 }
+
+
